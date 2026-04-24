@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Claim Item</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gradient-to-br from-green-900 to-slate-800 min-h-screen flex items-center justify-center">
+
+<div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-lg">
+
+<h2 class="text-2xl font-bold text-center text-green-800 mb-6">
+🔐 Claim Your Item
+</h2>
+
+<form id="claimForm" class="space-y-4">
+
+<!-- PERSONAL DETAILS -->
+<input placeholder="Full Name" required class="w-full p-3 border rounded-lg">
+<input placeholder="Phone Number" required class="w-full p-3 border rounded-lg">
+<input placeholder="Email" required class="w-full p-3 border rounded-lg">
+<input placeholder="Roll Number" required class="w-full p-3 border rounded-lg">
+<input placeholder="Year" required class="w-full p-3 border rounded-lg">
+<input placeholder="Department" required class="w-full p-3 border rounded-lg">
+
+<!-- ITEM DETAILS -->
+<input placeholder="Item Name" required class="w-full p-3 border rounded-lg">
+<input placeholder="Model" class="w-full p-3 border rounded-lg">
+<input placeholder="Lost Location" required class="w-full p-3 border rounded-lg">
+
+<input type="date" required class="w-full p-3 border rounded-lg">
+
+<textarea placeholder="Describe your item"
+class="w-full p-3 border rounded-lg"></textarea>
+
+<!-- OPTIONAL -->
+<label class="text-sm">QR Code (optional)</label>
+<input type="file" class="w-full p-2 border rounded-lg">
+
+<label class="text-sm">Item Image (optional)</label>
+<input type="file" class="w-full p-2 border rounded-lg">
+
+<button class="w-full bg-green-700 text-white py-3 rounded-lg">
+Submit Claim
+</button>
+
+</form>
+
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+import { initializeFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+
+/* ✅ ADDED THIS ONLY */
+import { getAuth } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAv6e14kxuK5PtbLNvP9HEvWDMHOVWjrWg",
+  authDomain: "lost-found-system-732ba.firebaseapp.com",
+  projectId: "lost-found-system-732ba"
+};
+
+const app = initializeApp(firebaseConfig);
+
+const db = initializeFirestore(app, {
+  experimentalForceLongPolling: true
+});
+
+/* ✅ ADDED THIS ONLY */
+const auth = getAuth(app);
+
+const form = document.getElementById("claimForm");
+
+// ✅ Get clicked item ID
+const itemId = localStorage.getItem("claimItemId");
+
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  /* ✅ ADDED THIS ONLY */
+  const user = auth.currentUser;
+
+  const data = {
+  itemId: itemId,
+
+  /* ✅ ADDED THIS ONLY (MAIN FIX) */
+  userId: user.uid,
+
+  name: form[0].value,
+  phno: form[1].value,
+  email: form[2].value,
+  roll: form[3].value,
+  year: form[4].value,
+  dept: form[5].value,
+  itemName: form[6].value,
+  model: form[7].value,
+  location: form[8].value,
+  date: form[9].value,
+  description: form[10].value,
+  status: "pending",
+  createdAt: new Date()
+};
+
+  try {
+    await addDoc(collection(db, "claims"), data);
+
+    alert("✅ Claim submitted! Admin will verify.");
+
+    window.location.href = "dashboard.html";
+
+  } catch (err) {
+    alert("Error: " + err.message);
+  }
+});
+</script>
+
+</body>
+</html>

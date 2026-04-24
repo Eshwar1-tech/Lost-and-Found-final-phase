@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Success</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gradient-to-br from-emerald-500 via-green-600 to-teal-700 min-h-screen flex items-center justify-center font-sans">
+
+<div class="bg-white/95 backdrop-blur-md p-8 rounded-3xl shadow-2xl text-center w-96 border border-white/40">
+
+<!-- ICON -->
+<div class="text-5xl mb-3">
+  🎉
+</div>
+
+<h2 class="text-2xl font-bold text-green-700 mb-2">
+✅ Submission Successful!
+</h2>
+
+<p class="text-gray-600 mb-6 text-sm leading-relaxed">
+Your details have been successfully submitted to the Lost & Found System.
+</p>
+
+<div class="space-y-3">
+
+<button onclick="location.href='dashboard.html'"
+class="w-full bg-blue-900 text-white py-2.5 rounded-xl shadow hover:bg-blue-700 transition font-semibold">
+🏠 Go to Dashboard
+</button>
+
+<button onclick="location.href='view-items.html'"
+class="w-full bg-green-600 text-white py-2.5 rounded-xl shadow hover:bg-green-700 transition font-semibold">
+📋 View Items
+</button>
+
+<button onclick="location.href='post-found.html'"
+class="w-full bg-purple-600 text-white py-2.5 rounded-xl shadow hover:bg-purple-700 transition font-semibold">
+➕ Post Another Item
+</button>
+
+<button onclick="showInfo()"
+class="w-full bg-gray-100 text-gray-700 py-2.5 rounded-xl hover:bg-gray-200 transition font-medium">
+ℹ️ Know More About System
+</button>
+
+</div>
+
+<!-- FOOT NOTE -->
+<p class="text-xs text-gray-400 mt-5">
+Secure • Verified • Reliable
+</p>
+
+</div>
+
+<script>
+function showInfo(){
+alert(
+"📌 Your submission will be reviewed by the admin.\n\n" +
+"🔍 Our system compares lost & found details to find matches.\n\n" +
+"🔐 Only verified owners can collect items (physical proof required).\n\n" +
+"🚫 No third person can claim items without proper verification."
+);
+}
+</script>
+
+</body>
+</html>

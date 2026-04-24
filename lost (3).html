@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Post Lost Item</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gradient-to-br from-red-900 via-slate-900 to-black min-h-screen flex items-center justify-center">
+
+<div class="bg-white shadow-2xl rounded-3xl w-full max-w-lg p-8 border border-gray-200">
+
+<h2 class="text-3xl font-bold text-center text-red-700 mb-6 tracking-wide">
+🚨 Report Lost Item
+</h2>
+
+<form id="form" class="space-y-4">
+
+<input placeholder="Full Name" required class="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-400 transition">
+
+<input placeholder="Phone Number" required class="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-400 transition">
+
+<input placeholder="Email" required class="w-full p-3 border rounded-lg">
+
+<input placeholder="Roll Number" required class="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-400 transition">
+
+<input placeholder="Year" required class="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-400 transition">
+
+<input placeholder="Department" required class="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-400 transition">
+
+<input placeholder="Item Name (e.g., Mobile, ID Card)" required class="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-400 transition">
+
+<input placeholder="Model (if applicable)" class="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-400 transition">
+
+<input placeholder="Lost Location" required class="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-400 transition">
+
+<input type="date" required class="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-400 transition">
+
+<textarea placeholder="Describe your item (color, cover, stickers, etc.)"
+class="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-400 transition"></textarea>
+
+<label class="text-sm font-semibold text-gray-700">QR Code (optional)</label>
+<input type="file" class="w-full p-2 border border-gray-300 rounded-xl">
+
+<label class="text-sm font-semibold text-gray-700">Item Image (optional)</label>
+<input type="file" class="w-full p-2 border border-gray-300 rounded-xl">
+
+<button type="submit"
+class="w-full bg-red-700 text-white py-3 rounded-xl shadow-lg hover:bg-red-600 transition duration-300 font-semibold">
+Submit Lost Item
+</button>
+
+</form>
+
+</div>
+
+<!-- 🔥 SCRIPT (CORRECTED ONLY) -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+import { initializeFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAv6e14kxuK5PtbLNvP9HEvWDMHOVWjrWg",
+  authDomain: "lost-found-system-732ba.firebaseapp.com",
+  projectId: "lost-found-system-732ba"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = initializeFirestore(app, { experimentalForceLongPolling: true });
+const auth = getAuth(app);
+
+const form = document.getElementById("form");
+
+onAuthStateChanged(auth, (user) => {
+
+  if (!user) {
+    alert("Login required");
+    window.location.href = "index.html";
+    return;
+  }
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    if (!/^[0-9]{10}$/.test(form[1].value)) {
+      alert("Enter valid 10-digit phone number");
+      return;
+    }
+
+    let imageUrl = "";
+
+    const file = form[12].files[0];
+
+    if (file) {
+      const reader = new FileReader();
+
+      reader.onloadend = async () => {
+        imageUrl = reader.result;
+        await saveData(imageUrl);
+      };
+
+      reader.readAsDataURL(file);
+    } else {
+      await saveData("");
+    }
+
+    async function saveData(imageUrl) {
+
+      const data = {
+        userId: user.uid,
+
+        name: form[0].value.trim(),
+        phno: form[1].value.trim(),
+        email: form[2].value.trim(),
+
+        roll: form[3].value.trim(),
+        year: form[4].value.trim(),
+        dept: form[5].value.trim(),
+
+        itemName: form[6].value.trim(),
+        model: form[7].value.trim(),
+        location: form[8].value.trim(),
+
+        date: form[9].value,
+        description: form[10].value.trim(),
+
+        qr: form[11].files[0] ? form[11].files[0].name : "",
+        image: imageUrl,
+
+        status: "lost",
+        createdAt: new Date()
+      };
+
+      try {
+        await addDoc(collection(db, "lostItems"), data);
+
+        alert("✅ Lost item reported successfully!");
+        window.location.href = "dashboard.html";
+
+      } catch (err) {
+        alert("Error: " + err.message);
+      }
+    }
+
+  });
+
+});
+</script>
+
+</body>
+</html>

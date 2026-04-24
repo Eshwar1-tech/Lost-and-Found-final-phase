@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Lost & Found - Login</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="relative min-h-screen flex items-center justify-center overflow-hidden">
+
+<!-- 🔥 BACKGROUND -->
+<div class="absolute inset-0">
+<img src="mlrit.jpg" class="w-full h-full object-cover scale-105 blur-[2px]" />
+<div class="absolute inset-0 bg-gradient-to-br from-blue-950/90 via-slate-900/80 to-black/80"></div>
+</div>
+
+<!-- 🔥 LOGIN CARD -->
+<div class="relative bg-white/10 backdrop-blur-xl border border-white/20 shadow-2xl rounded-3xl p-8 w-96 z-10">
+
+<h2 class="text-3xl font-bold text-center text-white mb-6 tracking-wide">
+🔐 Lost & Found
+</h2>
+
+<p class="text-center text-gray-300 text-sm mb-6">
+Login or create your account
+</p>
+
+<form id="form" class="space-y-4">
+
+<input type="email" placeholder="Email" required
+class="w-full p-3 bg-white/20 text-white placeholder-gray-300 border border-white/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
+
+<input type="password" placeholder="Password" required
+class="w-full p-3 bg-white/20 text-white placeholder-gray-300 border border-white/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
+
+<button class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg shadow-lg transition duration-300">
+Login / Register
+</button>
+
+</form>
+
+<!-- 🔥 FOOTER -->
+<p class="text-center text-gray-400 text-xs mt-6">
+Secure • Fast • Reliable
+</p>
+
+</div>
+
+</body>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } 
+from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
+
+const firebaseConfig = {
+apiKey: "AIzaSyAv6e14kxuK5PtbLNvP9HEvWDMHOVWjrWg",
+authDomain: "lost-found-system-732ba.firebaseapp.com",
+projectId: "lost-found-system-732ba",
+storageBucket: "lost-found-system-732ba.firebasestorage.app",
+messagingSenderId: "137101012358",
+appId: "1:137101012358:web:dcd8ab66730f891be25007"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+
+const form = document.getElementById("form");
+
+// 🔥 ADMIN EMAIL
+const ADMIN_EMAIL = "admin@gmail.com";
+
+form.addEventListener("submit", async (e) => {
+e.preventDefault();
+
+const email = form[0].value.trim().toLowerCase();
+const password = form[1].value;
+
+if(password.length < 6){
+alert("Password must be 6+ characters");
+return;
+}
+
+try {
+const userCredential = await signInWithEmailAndPassword(auth, email, password);
+
+alert("Login Successful!");
+
+const user = userCredential.user;
+
+// ✅ FIXED REDIRECT
+if (user.email.toLowerCase() === ADMIN_EMAIL) {
+  window.location.href = "admin-claims.html";
+} else {
+  window.location.href = "dashboard.html";
+}
+
+} catch {
+try {
+
+if (email === ADMIN_EMAIL) {
+  alert("Admin already exists. Please login.");
+  return;
+}
+
+const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+
+alert("Account Created!");
+
+const user = userCredential.user;
+
+if (user.email.toLowerCase() === ADMIN_EMAIL) {
+  window.location.href = "admin-claims.html";
+} else {
+  window.location.href = "dashboard.html";
+}
+
+} catch(err){
+alert(err.message);
+}
+}
+});
+</script>
+
+</html>

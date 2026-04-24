@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>My Activity</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-100 p-6">
+
+<h2 class="text-2xl font-bold mb-6 text-center">
+📂 My Activity
+</h2>
+
+<div id="container" class="grid gap-4"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAv6e14kxuK5PtbLNvP9HEvWDMHOVWjrWg",
+  authDomain: "lost-found-system-732ba.firebaseapp.com",
+  projectId: "lost-found-system-732ba"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+const container = document.getElementById("container");
+
+let loaded = false; // ✅ prevents multiple execution
+
+// ✅ ignore AbortError (clean console)
+window.addEventListener("unhandledrejection", (event) => {
+  if (event.reason?.name === "AbortError") {
+    event.preventDefault();
+  }
+});
+
+onAuthStateChanged(auth, async (user) => {
+
+  if (!user || loaded) {
+    if (!user) window.location.href = "index.html";
+    return;
+  }
+
+  loaded = true;
+
+  const uid = user.uid;
+
+  container.innerHTML = "";
+
+  let hasData = false;
+
+  // 🔐 CLAIMS
+  let claimSnap;
+  try {
+    claimSnap = await getDocs(collection(db, "claims"));
+  } catch (e) {
+    console.log("Claims fetch aborted");
+    return;
+  }
+
+  claimSnap.forEach(doc => {
+    const data = doc.data();
+
+    if (data.userId === uid) {
+      hasData = true;
+
+      const card = document.createElement("div");
+      card.className = "bg-white p-5 rounded-xl shadow border-l-4 border-blue-600";
+
+      card.innerHTML = `
+        <h3 class="font-bold text-lg text-blue-900">🔐 Claim: ${data.itemName}</h3>
+        <p><b>📍 Location:</b> ${data.location}</p>
+
+        <p><b>Status:</b> 
+          <span class="${
+            data.status === "handed_over" ? "text-green-600" :
+            data.status === "approved" ? "text-blue-600" :
+            data.status === "rejected" ? "text-red-600" :
+            "text-yellow-600"
+          } font-bold">
+          ${data.status}
+          </span>
+        </p>
+      `;
+
+      container.appendChild(card);
+    }
+  });
+
+  // 📦 LOST ITEMS
+  let lostSnap;
+  try {
+    lostSnap = await getDocs(collection(db, "lostItems"));
+  } catch (e) {
+    console.log("Lost fetch aborted");
+    return;
+  }
+
+  lostSnap.forEach(doc => {
+    const data = doc.data();
+
+    if (data.userId === uid) {
+      hasData = true;
+
+      const card = document.createElement("div");
+      card.className = "bg-white p-5 rounded-xl shadow border-l-4 border-purple-600";
+
+      card.innerHTML = `
+        <h3 class="font-bold text-lg text-purple-900">📦 Lost: ${data.itemName}</h3>
+        <p><b>📍 Location:</b> ${data.location}</p>
+        <p><b>📅 Date:</b> ${data.date}</p>
+        <p><b>Status:</b> 
+  <span class="${
+    data.status === "claimed" ? "text-green-600" :
+    data.status === "handed_over" ? "text-green-700" :
+    data.status === "rejected" ? "text-red-600" :
+    "text-yellow-600"
+  } font-bold">
+  ${
+    data.status === "claimed" ? "Claimed" :
+    data.status === "handed_over" ? "Handed Over" :
+    data.status === "rejected" ? "Rejected" :
+    "Waiting"
+  }
+  </span>
+</p>
+      `;
+
+      container.appendChild(card);
+    }
+  });
+
+  // 🔍 FOUND ITEMS
+  let foundSnap;
+  try {
+    foundSnap = await getDocs(collection(db, "foundItems"));
+  } catch (e) {
+    console.log("Found fetch aborted");
+    return;
+  }
+
+  foundSnap.forEach(doc => {
+    const data = doc.data();
+
+    if (data.userId === uid) {
+      hasData = true;
+
+      const card = document.createElement("div");
+      card.className = "bg-white p-5 rounded-xl shadow border-l-4 border-green-600";
+
+      card.innerHTML = `
+        <h3 class="font-bold text-lg text-green-900">🔍 Found: ${data.itemName}</h3>
+        <p><b>📍 Location:</b> ${data.location}</p>
+        <p><b>👤 Submitted by you</b></p>
+
+        <p><b>Status:</b> 
+          <span class="${
+            data.status === "claimed" ? "text-green-600" :
+            data.status === "rejected" ? "text-red-600" :
+            "text-blue-600"
+          } font-bold">
+          ${
+            data.status === "claimed" ? "Claimed" :
+            data.status === "rejected" ? "Rejected" :
+            data.status === "available" ? "Available" :
+            "Available"
+          }
+          </span>
+        </p>
+      `;
+
+      container.appendChild(card);
+    }
+  });
+
+  if (!hasData) {
+    container.innerHTML = `
+      <p class="text-center text-gray-500">
+        No activity found
+      </p>
+    `;
+  }
+
+});
+</script>
+
+</body>
+</html>

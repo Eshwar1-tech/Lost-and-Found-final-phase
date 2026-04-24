@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<meta charset="UTF-8">
+<title>Admin - Claims</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- ✅ ADDED EMAILJS -->
+<script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
+
+</head>
+
+<body class="bg-gradient-to-br from-slate-100 to-gray-200 min-h-screen p-6 font-sans">
+
+<div class="flex items-center justify-between mb-6">
+
+  <!-- LEFT SIDE -->
+  <h2 class="text-2xl font-bold text-gray-800 flex items-center gap-2">
+    🛠 <span>Admin - Claims</span>
+  </h2>
+
+  <!-- RIGHT SIDE BUTTONS -->
+  <div class="flex gap-3">
+
+    <button onclick="location.href='admin.html'"
+      class="bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition">
+      📦 Found
+    </button>
+
+    <button onclick="location.href='view-lost.html'"
+      class="bg-purple-600 text-white px-4 py-2 rounded-lg shadow hover:bg-purple-700 transition">
+      🔍 Lost
+    </button>
+
+  </div>
+</div>
+
+<div id="container" class="grid gap-6"></div>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+import { initializeFirestore, collection, getDocs, doc, updateDoc, addDoc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAv6e14kxuK5PtbLNvP9HEvWDMHOVWjrWg",
+  authDomain: "lost-found-system-732ba.firebaseapp.com",
+  projectId: "lost-found-system-732ba"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = initializeFirestore(app, { experimentalForceLongPolling: true });
+const auth = getAuth(app);
+
+emailjs.init("rCbt0M-x10LD4E8sG");
+
+const ADMIN_EMAIL = "admin@gmail.com";
+const container = document.getElementById("container");
+
+onAuthStateChanged(auth, (user) => {
+if (!user || user.email.toLowerCase() !== ADMIN_EMAIL) {
+alert("Access denied");
+window.location.href = "index.html";
+return;
+}
+loadClaims();
+});
+
+function calculateMatch(claim, found) {
+let score = 0;
+const item = claim.itemName?.toLowerCase();
+
+if (item.includes("id")) {
+if (claim.name?.toLowerCase() === found.name?.toLowerCase()) score += 30;
+if (claim.roll === found.roll) score += 30;
+if (claim.dept?.toLowerCase() === found.dept?.toLowerCase()) score += 20;
+if (claim.year === found.year) score += 10;
+if (claim.location?.toLowerCase() === found.location?.toLowerCase()) score += 10;
+} else {
+if (claim.itemName?.toLowerCase() === found.itemName?.toLowerCase()) score += 25;
+if (claim.model?.toLowerCase() === found.model?.toLowerCase()) score += 20;
+if (claim.location?.toLowerCase() === found.location?.toLowerCase()) score += 20;
+if (claim.date === found.date) score += 15;
+}
+return score;
+}
+
+function calculateLostMatch(lost, found) {
+let score = 0;
+
+if (lost.itemName?.toLowerCase() === found.itemName?.toLowerCase()) score += 15;
+
+if (lost.model && found.model) {
+if (lost.model.toLowerCase() === found.model.toLowerCase()) score += 15;
+else if (
+lost.model.toLowerCase().includes(found.model.toLowerCase()) ||
+found.model.toLowerCase().includes(lost.model.toLowerCase())
+) score += 10;
+}
+
+if (lost.location?.toLowerCase() === found.location?.toLowerCase()) score += 20;
+
+if (lost.date && found.date) {
+const d1 = new Date(lost.date);
+const d2 = new Date(found.date);
+const diffDays = Math.abs((d1 - d2) / (1000 * 60 * 60 * 24));
+
+if (diffDays === 0) score += 15;
+else if (diffDays <= 2) score += 8;
+}
+
+if (lost.description && found.description) {
+const lDesc = lost.description.toLowerCase();
+const fDesc = found.description.toLowerCase();
+
+let matchWords = 0;
+lDesc.split(" ").forEach(word => {
+if (word.length > 3 && fDesc.includes(word)) matchWords++;
+});
+
+score += Math.min(matchWords * 2, 20);
+}
+
+return score;
+}
+
+async function loadClaims() {
+
+const claimSnap = await getDocs(collection(db, "claims"));
+const foundSnap = await getDocs(collection(db, "foundItems"));
+const lostSnap = await getDocs(collection(db, "lostItems"));
+
+const foundItems = [];
+const lostItems = [];
+const existingMatchKeys = [];
+
+claimSnap.forEach(doc => {
+const d = doc.data();
+if (d.matchKey) existingMatchKeys.push(d.matchKey);
+});
+
+foundSnap.forEach(doc => {
+foundItems.push({ id: doc.id, ...doc.data() });
+});
+
+lostSnap.forEach(doc => {
+lostItems.push({ id: doc.id, ...doc.data() });
+});
+
+let results = [];
+
+/* CLAIM LOOP */
+claimSnap.forEach((d) => {
+const data = d.data();
+
+let bestMatch = 0;
+let bestLostMatch = 0;
+let bestLostFound = 0;
+
+foundItems.forEach(item => {
+const score = calculateMatch(data, item);
+if (score > bestMatch) bestMatch = score;
+});
+
+lostItems.forEach(lost => {
+const score = calculateLostMatch(data, lost);
+if (score > bestLostMatch) bestLostMatch = score;
+});
+
+lostItems.forEach(lost => {
+if (lost.itemName?.toLowerCase() !== data.itemName?.toLowerCase()) return;
+
+foundItems.forEach(found => {
+if (found.itemName?.toLowerCase() !== data.itemName?.toLowerCase()) return;
+
+const score = calculateLostMatch(lost, found);
+if (score > bestLostFound) bestLostFound = score;
+});
+});
+
+results.push({
+id: d.id,
+...data,
+match: bestMatch,
+lostMatch: bestLostMatch,
+lostFound: bestLostFound
+});
+});
+
+/* AUTO MATCH FIXED */
+lostItems.forEach(lost => {
+foundItems.forEach(found => {
+
+if (lost.itemName?.toLowerCase() !== found.itemName?.toLowerCase()) return;
+
+const score = calculateLostMatch(lost, found);
+
+if (score >= 30) {
+
+const matchKey = lost.id + "_" + found.id;
+
+if (existingMatchKeys.includes(matchKey)) return;
+
+results.push({
+id: "auto_" + matchKey,
+matchKey: matchKey,
+
+itemName: lost.itemName,
+name: lost.name,
+phno: lost.phno || "N/A",
+email: lost.email || "N/A",
+roll: lost.roll || "N/A",
+location: lost.location,
+
+match: 0,
+lostMatch: 0,
+lostFound: score,
+
+status: "pending",
+
+image: lost.image || found.image
+});
+}
+
+});
+});
+
+results.sort((a, b) => b.match - a.match);
+
+container.innerHTML = "";
+
+if (results.length === 0) {
+container.innerHTML = `<p class="text-center text-gray-600">No claims</p>`;
+return;
+}
+
+results.forEach(data => {
+
+const card = document.createElement("div");
+card.className = "bg-white p-6 rounded-2xl shadow-lg border border-gray-200 hover:shadow-xl transition";
+
+let imageUrl = "";
+
+if (data.image) imageUrl = data.image;
+
+if (!imageUrl && data.itemId) {
+const foundItem = foundItems.find(f => f.id === data.itemId);
+if (foundItem && foundItem.image) imageUrl = foundItem.image;
+}
+
+if (!imageUrl) {
+imageUrl = "https://via.placeholder.com/300x200?text=No+Image";
+}
+
+card.innerHTML = `
+<h3 class="font-bold text-xl text-gray-800 mb-3">${data.itemName}</h3>
+
+<img src="${imageUrl}" class="w-full h-52 object-cover rounded-xl mb-4 border shadow-sm">
+
+<div class="space-y-1 text-gray-700 text-sm">
+<p><b>👤 Name:</b> ${data.name}</p>
+<p><b>📞 Phone:</b> ${data.phno || "N/A"}</p>
+<p><b>📧 Email:</b> ${data.email || "N/A"}</p>
+<p><b>🎓 Roll:</b> ${data.roll}</p>
+<p><b>📍 Location:</b> ${data.location}</p>
+</div>
+
+<div class="mt-4 space-y-1 text-sm">
+<p><b>🤖 Claim Match:</b> <span class="font-bold text-blue-600">${data.match}%</span></p>
+<p><b>🔍 Lost Match:</b> <span class="font-bold text-purple-600">${data.lostMatch}%</span></p>
+<p><b>🔄 Lost vs Found:</b> <span class="font-bold text-green-600">${data.lostFound}%</span></p>
+</div>
+
+<p class="mt-3">
+<b>Status:</b> 
+<span class="px-2 py-1 rounded bg-yellow-100 text-yellow-700 text-sm">
+  ${data.status || "auto_match"}
+</span>
+</p>
+
+<div class="actions flex gap-3 mt-4 ${data.status && data.status !== 'pending' ? 'hidden' : ''}">
+<button class="approve flex-1 bg-green-600 text-white py-2 rounded-lg">✅ Handed Over</button>
+<button class="reject flex-1 bg-red-600 text-white py-2 rounded-lg">❌ Reject</button>
+</div>
+`;
+
+card.querySelector(".approve").onclick = async () => {
+
+  try {
+
+    // ✅ FIXED IF-ELSE BLOCK
+    if (data.id.startsWith("auto_")) {
+
+      await addDoc(collection(db, "claims"), {
+        ...data,
+        status: "handed_over",
+        matchKey: data.matchKey,
+        createdAt: new Date().toISOString()
+      });
+
+      const foundId = data.matchKey.split("_")[1];
+const lostId = data.matchKey.split("_")[0];
+
+// ✅ update found
+await updateDoc(doc(db, "foundItems", foundId), {
+  status: "claimed"
+});
+
+// ✅ ADD THIS (MAIN FIX)
+await updateDoc(doc(db, "lostItems", lostId), {
+  status: "claimed"
+});
+
+    } else {
+
+      await updateDoc(doc(db, "claims", data.id), {
+        status: "handed_over"
+      });
+
+      if (data.itemId) {
+        await updateDoc(doc(db, "foundItems", data.itemId), {
+          status: "claimed"
+        });
+      }
+      // ✅ ALSO UPDATE LOST IF EXISTS
+if (data.lostId) {
+  await updateDoc(doc(db, "lostItems", data.lostId), {
+    status: "claimed"
+  });
+}
+
+    }
+
+    // ✅ EMAIL PART
+    let emailSuccess = false;
+
+    try {
+      const res = await emailjs.send("service_abc123", "template_fim8m66", {
+        name: data.name,
+        item: data.itemName,
+        to_email: data.email
+      });
+
+      console.log("EmailJS Success:", res);
+      emailSuccess = true;
+
+    } catch (e) {
+      console.error("EmailJS Error:", e);
+    }
+
+    // ✅ ALERT
+    if (emailSuccess) {
+      alert("Item handed over & Email sent ✅");
+    } else {
+      alert("Item handed over ⚠️ Email FAILED");
+    }
+
+    // ✅ UI
+    card.remove();
+    loadClaims();
+
+  } catch (error) {
+    console.error(error);
+    alert("Error ❌");
+  }
+
+};
+
+card.querySelector(".reject").onclick = async () => {
+
+try {
+
+if (data.id.startsWith("auto_")) {
+
+await addDoc(collection(db, "claims"), {
+...data,
+status: "rejected",
+matchKey: data.matchKey,
+createdAt: new Date().toISOString()
+});
+
+} else {
+
+await updateDoc(doc(db, "claims", data.id), {
+status: "rejected"
+});
+
+}
+
+alert("Claim rejected ❌");
+card.remove();
+loadClaims();
+
+} catch (error) {
+console.error(error);
+alert("Error ❌");
+}
+
+};
+
+container.appendChild(card);
+
+});
+
+}
+
+</script>
+
+</body>
+</html>
